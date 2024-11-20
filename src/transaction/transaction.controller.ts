@@ -2,68 +2,98 @@ import {
   Controller,
   Get,
   Post,
-  Patch,
   Param,
   Body,
-  UseGuards,
   Request,
+  UseGuards,
 } from '@nestjs/common';
 import { TransactionService } from './transaction.service';
-import { AuthGuard } from '../auth/auth.guard';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiParam,
+  ApiBearerAuth,
+  ApiResponse,
+} from '@nestjs/swagger';
+import { AuthGuard } from 'src/auth/auth.guard';
 
+@ApiTags('Transactions') // Group under 'Transactions' in Swagger
+@ApiBearerAuth() // Indicate the need for authentication
 @Controller('transactions')
 @UseGuards(AuthGuard)
 export class TransactionController {
   constructor(private readonly transactionService: TransactionService) {}
 
-  // Create a new transaction (accessible to both users and admins)
-
   @Post()
-  async createTransaction(
-    @Request() req, // This will contain the authenticated user's details
+  @ApiOperation({ summary: 'Create a new transaction' })
+  @ApiResponse({
+    status: 201,
+    description: 'The transaction has been successfully created.',
+    schema: {
+      example: {
+        _id: '673ca10dfc99dcd166dadda1',
+        userId: '671f699164930ae9378b9e0e',
+        amount: 500000,
+        type: 'credit',
+        narration: 'riceee bag',
+        category: 'food',
+        status: 'pending',
+        createdAt: '2024-11-19T14:30:37.342Z',
+        updatedAt: '2024-11-19T14:30:37.342Z',
+      },
+    },
+  })
+  createTransaction(
+    @Request() req,
     @Body('amount') amount: number,
     @Body('type') type: 'credit' | 'debit',
     @Body('narration') narration: string,
+    @Body('category') category: string,
   ) {
-    console.log(req.user);
-    const userId = req.user.sub; // Extract the user ID from the authenticated user
     return this.transactionService.createTransaction(
-      userId,
+      req.user.sub,
       amount,
       type,
       narration,
+      category,
     );
   }
 
-  // Get all transactions for a specific user (User)
+  @Get('/category/:category')
+  @ApiOperation({ summary: 'Get transactions filtered by category' })
+  @ApiParam({ name: 'category', description: 'Category of the transaction' })
+  async getTransactionsByCategory(
+    @Request() req,
+    @Param('category') category: string,
+  ) {
+    const user = req.user;
+    const transactionCat = await this.transactionService.getUserTransactions(
+      user.sub,
+    );
+    const categoryData = transactionCat.filter((t) => t.category === category);
+    return categoryData;
+  }
+
   @Get('user/:userId')
-  async getUserTransactions(@Param('userId') userId: string) {
+  @ApiOperation({ summary: 'Get all transactions for a specific user' })
+  @ApiParam({ name: 'userId', description: 'ID of the user' })
+  getUserTransactions(@Param('userId') userId: string) {
     return this.transactionService.getUserTransactions(userId);
   }
-
-  // Approve or decline a transaction (Admin)
-  @Patch(':transactionId/approve')
-  async approveTransaction(
-    @Param('transactionId') transactionId: string,
-    @Body('approve') approve: boolean,
-  ) {
-    return this.transactionService.handleTransactionApproval(
-      transactionId,
-      approve,
-    );
-  }
-
-  // Get all transactions (Admin)
-  @Get()
-  async getTransactions(@Request() req) {
-    const user = req.user;
-    console.log(user);
-    if (user.roles.includes('admin')) {
-      // Admin can see all transactions
-      return this.transactionService.getAllTransactions();
-    } else {
-      // Regular user can only see their own transactions
-      return this.transactionService.getUserTransactions(user.sub); // Use user.sub as userId
-    }
-  }
 }
+
+// @Get('/category/:category')
+// async getTransactionsByCategory(
+//   @Request() req,
+//   @Param('category') category: string,
+// ) {
+//   const user = req.user;
+
+//   const transactionCat = await this.transactionService.getUserTransactions(
+//     user.sub,
+//   );
+
+//   const categoryData = transactionCat.filter((t) => t.category === category);
+
+//   return categoryData;
+// }

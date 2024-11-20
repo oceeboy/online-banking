@@ -21,6 +21,7 @@ export class TransactionService {
     amount: number,
     type: 'credit' | 'debit',
     narration: string,
+    category: string,
   ): Promise<Transaction> {
     // Find the user by ID
     const user = await this.userModel.findById(userId);
@@ -59,6 +60,7 @@ export class TransactionService {
       type,
       narration,
       status,
+      category,
     });
 
     return transaction.save();
@@ -111,5 +113,10 @@ export class TransactionService {
   // Get all transactions for a specific user
   async getUserTransactions(userId: string): Promise<Transaction[]> {
     return this.transactionModel.find({ userId }).exec();
+  }
+
+  // Get transaction for category
+  async getTransactionsByCategory(category: string): Promise<Transaction[]> {
+    return this.transactionModel.find({ category }).exec();
   }
 }

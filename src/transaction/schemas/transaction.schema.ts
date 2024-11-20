@@ -11,6 +11,7 @@ export const TransactionSchema = new Schema(
       default: 'pending',
     },
     narration: { type: String, required: true },
+    category: { type: String, required: true },
   },
   { timestamps: true }, // Automatically create createdAt and updatedAt fields
 );
